@@ -1,0 +1,14 @@
+{% extends "base.html" %} 
+
+{% block title %} Login {% endblock %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %} 
+    {% if messages %} 
+      <h1>{{ messages[0] }}</h1>
+    {% endif %}
+{% endwith %}
+
+<h1><a href="/homepage">Tiến tới trang chủ Rạp chiếu phim</a></h1>
+{% endblock %}

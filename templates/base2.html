@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./static/style.css" />
+    <title>{% block title %} {% endblock %}</title>
+  </head>
+  <body>
+    <div class="menu">
+      <a href="/homepage">Trang chủ</a>
+      <a href="/movie_schedule">Lịch chiếu</a>
+      <a href="/new">Tin tức</a>
+      <a href="/promotion">Khuyến mãi</a>
+      <a href="/price">Giá vé</a>
+      <a href="/film_week">Liên hoan phim, tuần phim</a>
+      <a href="/intro">Giới thiệu</a>
+
+      <div class="logout">
+        <a href="/logout" id="logout">Đăng xuất</a>
+      </div>
+    </div>
+    {% block content %} {% endblock %}
+  </body>
+</html>

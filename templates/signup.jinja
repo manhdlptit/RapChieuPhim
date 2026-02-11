@@ -1,0 +1,53 @@
+{% extends "base.html" %} 
+
+{% block title %} Sign Up {% endblock %} 
+
+{% block content %} 
+
+{% with messages = get_flashed_messages() %} 
+    {% if messages %} 
+        <h1>{{ messages[0] }}</h1>
+    {% endif %} 
+{% endwith %} 
+<div class="intro"> <h2>Trang Sign Up</h2></div>
+<div class="box_information">
+    <form action="#" method="post">
+          <div class="group">
+            <label for="">Email</label>
+            <div><input type="email" name="email_user" placeholder="Input your email" /></div>
+          </div>
+          <div class="group">
+            <label for="">User Name</label>
+            <div>
+                <input
+                  type="text"
+                  name="user_name"
+                  placeholder="Input your user_name"
+                />
+            </div>
+          </div>
+          <div class="group">
+            <label for="">Password</label>
+            <div>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Input your password"
+                />
+            </div>
+          </div>
+          <div class="group">
+            <label for="">Check Password</label>
+            <div>
+                <input
+                  type="password"
+                  name="check_password"
+                  placeholder="Input your password"
+                />
+            </div>
+          </div>
+          <div class="btn"><button type="submit">Sign Up</button></div>
+    </form>
+</div>
+
+{% endblock %}
