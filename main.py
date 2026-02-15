@@ -1,5 +1,6 @@
 from flask import Flask, redirect, url_for, render_template, request, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
+import uuid
 
 app = Flask(__name__)
 
@@ -14,11 +15,13 @@ class User(db.Model):
     email = db.Column(db.String(100), unique = True)
     name = db.Column(db.String(100), unique = True)
     password = db.Column(db.String(150))
+    token = db.Column(db.String())
 
-    def __init__(self, email, name, password):
+    def __init__(self, email, name, password, token = None):
         self.email = email
         self.name = name
         self.password = password
+        self.token = token
 
 @app.route("/")
 @app.route("/signup", methods = ["POST","GET"])
@@ -158,6 +161,25 @@ def create_user():
     except Exception as a:
         db.session.rollback()
         return {"error" : str(a)}
+    
+def get_user_from_token():
+    header = request.headers.get("Authorization")
+    if header and header.startswith("Bearer"):
+        token = header.split(" ")[1]
+        user = User.query.filter(User.token == token).first()
+        if user:
+            return user
+        return None
+    return None
+
+@app.route("/api/logout", methods = ["POST"])
+def logout_with_token():
+    user = get_user_from_token()
+    if user:
+        user.token = None
+        db.session.commit()
+        return jsonify({"message": "Logged out"})
+    return jsonify({"error": "Unauthorized (Also you input token wrong)"})
 
 @app.route('/api/hello', methods=["GET"])
 def hello_api():
@@ -170,11 +192,14 @@ def hello_api():
 def call_api_users():
     if request.method == "GET":
         return print_user()
-    elif request.method == "POST":
-        return create_user()
+    if request.method == "POST":
+        user = get_user_from_token()
+        if user:
+            return create_user()
+        return jsonify({"error":"You must create account before this update or already login or you must input correct token!"}),401
     
 def print_id_user(id):
-    found_id = User.query.get(id)
+    found_id = db.session.get(User, id)
     try:
         if found_id:
             return jsonify({
@@ -187,43 +212,60 @@ def print_id_user(id):
         return jsonify({"error": str(a)})
     
 def update_user(id):
-    found_id = User.query.get(id)
+    found_id = db.session.get(User, id)
     try:
         if found_id:
             data = request.get_json()
-            found_name_same =  User.query.filter((data.get("name") == User.name)).first()
-            if found_name_same:
-                return jsonify({"error" : "name existed"})
-            found_id.name = data.get("name", found_id.name)
-            db.session.commit()
-            return jsonify({ 
-                "id" : found_id.id,
-                "name" : found_id.name,
-                "email" : found_id.email
-            }), 200
+            name = data.get("name")
+            if name:
+                found_name_same =  User.query.filter((User.name==name)).first()
+                # id_not_same = User.query.filter((User.id != id)).first()
+                if found_name_same:
+                    return jsonify({"error" : "name existed"}),400
+                else:
+                    # if id_not_same:
+                        found_id.name = name
+                        db.session.commit()
+                        return jsonify({ 
+                            "id" : found_id.id,
+                            "name" : found_id.name,
+                            "email" : found_id.email
+                        }), 200
+                    # return jsonify({"error": "Forbidden"}),403
         return jsonify({"error": "User not found"}), 404
     except Exception as e:
         return jsonify({"error" : str(e)})
     
 def delete_user(id):
     found_id = db.session.get(User, id)
+    # id_not_same = User.query.filter(User.id != id).first()
     try:
         if found_id:
-            db.session.delete(found_id)
-            db.session.commit()
-            return jsonify({"message": "User deleted"}), 200
+            # if id_not_same:
+                db.session.delete(found_id)
+                db.session.commit()
+                return jsonify({"message": "User deleted"}), 200
+            # return jsonify({"error": "Forbidden"}),403
         return jsonify ({"error": "User not found"}), 404
     except Exception as a:
         return jsonify({"error": str(a)})
     
+
+
 @app.route("/api/users/<int:id>", methods = ["PUT","GET","DELETE"])
 def call_api_users_with_id(id):
-    if request.method == "GET":
-        return print_id_user(id)
-    elif request.method == "PUT":
-        return update_user(id)
-    elif request.method == "DELETE":
-        return delete_user(id)
+    user = get_user_from_token()
+    if not user:
+        return jsonify({"error": "Unauthorized"}),401
+    if user.id != id:
+        return jsonify({"error": "Forbidden"}),403
+    if user:
+        if request.method == "GET":
+            return print_id_user(id)
+        elif request.method == "PUT":
+            return update_user(id)
+        elif request.method == "DELETE":
+            return delete_user(id)
     
 @app.route("/api/users/search")
 def found_user():
@@ -241,6 +283,40 @@ def found_user():
         return jsonify ({"error" : "error, you don't input email"}), 404
     except Exception as e:
         return jsonify({"error" : str(e)})
+    
+@app.route("/api/login", methods = ["POST"])
+def create_token():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+    
+    user = User.query.filter(User.email == email).first()
+    if user:
+        if user.password == password:
+            user.token = uuid.uuid4().hex
+            db.session.commit()
+            return jsonify({
+                "token": user.token,
+                "user":{
+                    "id" : user.id,
+                    "name" : user.name,
+                    "email" : user.email
+                }
+            }),200
+        return jsonify({"error": "Invalid email or password"}),401
+    return jsonify({"error": "Invalid email or password"}),401
+
+@app.route("/api/me")
+def token_to_user():
+    user = get_user_from_token()
+    if user:
+        return jsonify({
+            "id" : user.id,
+            "name" : user.name,
+            "email" : user.email
+        }),200
+    return jsonify({"error": "Unauthorized"}), 401
+
 
 if __name__ == "__main__":
     with app.app_context():
