@@ -144,7 +144,9 @@ def create_user():
     password = data.get("password")
 
     if not email or not name or not password:
-        return jsonify({"error" : " Do not null any value"})
+        return jsonify({"error" : " Do not null any value"}), 400
+    if len(password) < 8:
+        return jsonify({"error" : "password length is longer than 8 characters"}), 400
 
     found_user = User.query.filter((User.email == email) | (User.name == name)).first()
 
@@ -175,16 +177,17 @@ def get_user_from_token():
 @app.route("/api/logout", methods = ["POST"])
 def logout_with_token():
     user = get_user_from_token()
-    if user:
+    if user is not None:
         user.token = None
         db.session.commit()
-        return jsonify({"message": "Logged out"})
-    return jsonify({"error": "Unauthorized (Also you input token wrong)"})
+        return jsonify({"message": "Logged out"}), 200
+    return jsonify({"error": "Unauthorized (Maybe you input token wrong)"}), 401 # use 401
+
 
 @app.route('/api/hello', methods=["GET"])
 def hello_api():
     try:
-        return jsonify({"message": "Hello from API"})
+        return jsonify({"message": "Hello from API"}), 200
     except Exception as a:
         return jsonify({"error": str(a)})
 
@@ -194,9 +197,9 @@ def call_api_users():
         return print_user()
     if request.method == "POST":
         user = get_user_from_token()
-        if user:
+        if user is not None:
             return create_user()
-        return jsonify({"error":"You must create account before this update or already login or you must input correct token!"}),401
+        return jsonify({"error":"You must create account before this update or already login or you must input correct token!"}), 401
     
 def print_id_user(id):
     found_id = db.session.get(User, id)
@@ -219,11 +222,9 @@ def update_user(id):
             name = data.get("name")
             if name:
                 found_name_same =  User.query.filter((User.name==name)).first()
-                # id_not_same = User.query.filter((User.id != id)).first()
                 if found_name_same:
-                    return jsonify({"error" : "name existed"}),400
+                    return jsonify({"error" : "name existed"}), 400
                 else:
-                    # if id_not_same:
                         found_id.name = name
                         db.session.commit()
                         return jsonify({ 
@@ -231,21 +232,17 @@ def update_user(id):
                             "name" : found_id.name,
                             "email" : found_id.email
                         }), 200
-                    # return jsonify({"error": "Forbidden"}),403
         return jsonify({"error": "User not found"}), 404
     except Exception as e:
         return jsonify({"error" : str(e)})
     
 def delete_user(id):
     found_id = db.session.get(User, id)
-    # id_not_same = User.query.filter(User.id != id).first()
     try:
         if found_id:
-            # if id_not_same:
                 db.session.delete(found_id)
                 db.session.commit()
                 return jsonify({"message": "User deleted"}), 200
-            # return jsonify({"error": "Forbidden"}),403
         return jsonify ({"error": "User not found"}), 404
     except Exception as a:
         return jsonify({"error": str(a)})
@@ -255,11 +252,11 @@ def delete_user(id):
 @app.route("/api/users/<int:id>", methods = ["PUT","GET","DELETE"])
 def call_api_users_with_id(id):
     user = get_user_from_token()
-    if not user:
-        return jsonify({"error": "Unauthorized"}),401
+    if user is None:
+        return jsonify({"error": "Unauthorized"}), 401
     if user.id != id:
-        return jsonify({"error": "Forbidden"}),403
-    if user:
+        return jsonify({"error": "Forbidden"}), 403
+    if user is not None:
         if request.method == "GET":
             return print_id_user(id)
         elif request.method == "PUT":
@@ -280,7 +277,7 @@ def found_user():
                     "email" : search.email
                 })
             return jsonify ({"error" : "error, not found email"}), 400
-        return jsonify ({"error" : "error, you don't input email"}), 404
+        return jsonify ({"error" : "error, you have not input email"}), 404
     except Exception as e:
         return jsonify({"error" : str(e)})
     
@@ -303,13 +300,13 @@ def create_token():
                     "email" : user.email
                 }
             }),200
-        return jsonify({"error": "Invalid email or password"}),401
-    return jsonify({"error": "Invalid email or password"}),401
+        return jsonify({"error": "Invalid password"}),401
+    return jsonify({"error": "Invalid email"}),401
 
 @app.route("/api/me")
 def token_to_user():
     user = get_user_from_token()
-    if user:
+    if user is not None:
         return jsonify({
             "id" : user.id,
             "name" : user.name,
