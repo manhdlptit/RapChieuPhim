@@ -314,8 +314,80 @@ def token_to_user():
         }),200
     return jsonify({"error": "Unauthorized"}), 401
 
+class Movies(db.Model):
+    __tablename__ = "list_movies"
+
+    id = db.Column(db.Integer, primary_key = True)
+    title = db.Column(db.Integer, unique = True)
+    duration_minutes = db.Column(db.String())
+    description = db.Column(db.String())
+
+    def __init__(self, title, duration_minutes = None, description = None):
+        self.title = title
+        self.duration_minutes = duration_minutes
+        self.description = description
+
+def create_movies():
+    data = request.get_json()
+
+    title = data.get("title")
+    duration_minutes = data.get("duration_minutes")
+    description = data.get("description")
+
+    if title is None:
+        return jsonify({"error": "Title is required"}), 400
+    if duration_minutes is not None and duration_minutes < 0:
+        return jsonify({"error" : "Time of movie must positive integer"}), 400
+    movie = Movies(title, duration_minutes, description)
+    db.session.add(movie)
+    db.session.commit()
+    return jsonify({
+        "successfully" : "Add new movie successful",
+        "movie" :
+        {
+            "id" : movie.id,
+            "title" : movie.title,
+            "duration_minutes" : movie.duration_minutes,
+            "description" : movie.description
+        }
+    })
+
+def list_movies():
+    movies = Movies.query.order_by(Movies.id).first()
+    list_movies = []
+    for movie in movies:
+        list_movies.append({
+            "id" : movie.id,
+            "title" : movie.title,
+            "duration_minutes" : movie.duration_minutes,
+            "description" : movie.description
+        })
+    return jsonify(list_movies)
+    
+
+@app.route("/api/movies", methods = ["GET", "POST"])
+def call_api_movies():
+    if request.method == "GET":
+        return list_movies()
+    if request.method == "POST":
+        return create_movies()
+
+@app.route("/api/movies/<int:id>")
+def list_movies_with_id(id):
+    movie = db.session.get(Movies, id)
+    if movie is not None:
+        return jsonify ({
+            "id" : movie.id,
+            "title" : movie.title,
+            "duration_minutes" : movie.duration_minutes,
+            "description" : movie.description
+        })
+    return jsonify({"error": "Movie not found"}), 404
+
+
+
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=8000)
+    app.run(debug=True, port=9000)
