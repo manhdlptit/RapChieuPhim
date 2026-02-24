@@ -318,8 +318,8 @@ class Movies(db.Model):
     __tablename__ = "list_movies"
 
     id = db.Column(db.Integer, primary_key = True)
-    title = db.Column(db.Integer, unique = True)
-    duration_minutes = db.Column(db.String())
+    title = db.Column(db.String(), nullable = False)
+    duration_minutes = db.Column(db.Integer())
     description = db.Column(db.String())
 
     def __init__(self, title, duration_minutes = None, description = None):
@@ -333,27 +333,30 @@ def create_movies():
     title = data.get("title")
     duration_minutes = data.get("duration_minutes")
     description = data.get("description")
-
-    if title is None:
-        return jsonify({"error": "Title is required"}), 400
-    if duration_minutes is not None and duration_minutes < 0:
-        return jsonify({"error" : "Time of movie must positive integer"}), 400
-    movie = Movies(title, duration_minutes, description)
-    db.session.add(movie)
-    db.session.commit()
-    return jsonify({
-        "successfully" : "Add new movie successful",
-        "movie" :
-        {
-            "id" : movie.id,
-            "title" : movie.title,
-            "duration_minutes" : movie.duration_minutes,
-            "description" : movie.description
-        }
-    })
+    found_movie_existed = Movies.query.filter((Movies.title == title) & (Movies.duration_minutes == duration_minutes) & (Movies.description == description) & (Movies.duration_minutes != None) & (Movies.description != None)).first()
+    if found_movie_existed is not None:
+        return jsonify({"error" : "This film existed in db!"}), 400
+    else:
+        if title is None or len(title.strip()) == 0:
+            return jsonify({"error": "Title is required"}), 400
+        if duration_minutes is not None and duration_minutes < 0:
+            return jsonify({"error" : "Time of movie must positive integer"}), 400
+        movie = Movies(title, duration_minutes, description)
+        db.session.add(movie)
+        db.session.commit()
+        return jsonify({
+            "successfully" : "Add new movie successful",
+            "movie" :
+            {
+                "id" : movie.id,
+                "title" : movie.title,
+                "duration_minutes" : movie.duration_minutes,
+                "description" : movie.description
+            }
+        })
 
 def list_movies():
-    movies = Movies.query.order_by(Movies.id).first()
+    movies = Movies.query.order_by(Movies.id).all()
     list_movies = []
     for movie in movies:
         list_movies.append({
@@ -363,16 +366,7 @@ def list_movies():
             "description" : movie.description
         })
     return jsonify(list_movies)
-    
 
-@app.route("/api/movies", methods = ["GET", "POST"])
-def call_api_movies():
-    if request.method == "GET":
-        return list_movies()
-    if request.method == "POST":
-        return create_movies()
-
-@app.route("/api/movies/<int:id>")
 def list_movies_with_id(id):
     movie = db.session.get(Movies, id)
     if movie is not None:
@@ -384,10 +378,61 @@ def list_movies_with_id(id):
         })
     return jsonify({"error": "Movie not found"}), 404
 
+def update_movie(id):
+    found_id = db.session.get(Movies,id)
+    if found_id is not None:
+        data = request.get_json()
+    
+        title = data.get("title", found_id.title)
+        duration_minutes = data.get("duration_minutes", found_id.duration_minutes)
+        description = data.get("description", found_id.description)
+        if not title or len(title.strip()) == 0:
+            return jsonify({"error": "Title is required"}), 400
+        if duration_minutes is not None and duration_minutes < 0:
+            return jsonify({"error" : "Time of movie must positive integer"}), 400
+        found_id.title = title
+        found_id.duration_minutes = duration_minutes
+        found_id.description = description
+        db.session.commit()
+        return jsonify({
+            "id" : found_id.id,
+            "title" : found_id.title,
+            "duration_minutes" : found_id.duration_minutes,
+            "description" : found_id.description
+        })
+    return jsonify({"error": "Movie not found"}), 404
 
+def delete_movie(id):
+    found_id = db.session.get(Movies, id)
+    if found_id is not None:
+        db.session.delete(found_id)
+        db.session.commit()
+        return jsonify({"message": "Movie deleted"}),200
+    return jsonify({"error": "Movie not found"}), 404
+    
+@app.route("/api/movies", methods = ["GET", "POST"])
+def call_api_movies():
+    user = get_user_from_token()
+    if user is not None:
+        if request.method == "GET":
+            return list_movies()
+        if request.method == "POST":
+            return create_movies()
+    return jsonify({"error": "Unauthorized"}), 401
 
+@app.route("/api/movies/<int:id>", methods = ["GET","PUT","DELETE"])
+def call_api_movie_with_id(id):
+    user = get_user_from_token()
+    if user is not None:
+        if request.method == "GET":
+            return list_movies_with_id(id)
+        if request.method == "PUT":
+            return update_movie(id)
+        if request.method == "DELETE":
+            return delete_movie(id)
+    return jsonify({"error": "Unauthorized"}), 401
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=9000)
+    app.run(debug=True, port=8000)
