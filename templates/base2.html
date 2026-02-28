@@ -8,16 +8,17 @@
   </head>
   <body>
     <div class="menu">
-      <a href="/homepage">Trang chủ</a>
-      <a href="/movie_schedule">Lịch chiếu</a>
-      <a href="/new">Tin tức</a>
-      <a href="/promotion">Khuyến mãi</a>
-      <a href="/price">Giá vé</a>
-      <a href="/film_week">Liên hoan phim, tuần phim</a>
-      <a href="/intro">Giới thiệu</a>
-
+      <a href="{{ url_for('web_route.homepage') }}">Trang chủ</a>
+      <a href="{{ url_for('web_route.movie_schedule') }}">Lịch chiếu</a>
+      <a href="{{ url_for('web_route.new') }}">Tin tức</a>
+      <a href="{{ url_for('web_route.promotion') }}">Khuyến mãi</a>
+      <a href="{{ url_for('web_route.price') }}">Giá vé</a>
+      <a href="{{ url_for('web_route.film_week') }}"
+        >Liên hoan phim, tuần phim</a
+      >
+      <a href="{{ url_for('web_route.intro') }}">Giới thiệu</a>
       <div class="logout">
-        <a href="/logout" id="logout">Đăng xuất</a>
+        <a href="{{ url_for('web_route.logout') }}" id="logout">Đăng xuất</a>
       </div>
     </div>
     {% block content %} {% endblock %}
