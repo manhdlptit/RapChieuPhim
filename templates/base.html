@@ -12,10 +12,10 @@
   <body>
     <div class="intro"><h1 class="">Rạp chiếu phim</h1></div>
     <div class="menu">
-      <a href="/login">Login</a>
-      <a href="/logout">Logout</a>
-      <a href="/delete_user">Delete account</a>
-      <a href="/signup">Signup</a>
+      <a href="{{ url_for('web_route.login') }}">Login</a>
+      <a href="{{ url_for('web_route.logout') }}">Logout</a>
+      <a href="{{ url_for('web_route.delete_account') }}">Delete account</a>
+      <a href="{{ url_for('web_route.sign_up') }}">Signup</a>
     </div>
     {% block content %} {% endblock %}
   </body>
