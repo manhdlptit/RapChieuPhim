@@ -66,7 +66,7 @@ def create_user():
         print(err)
         return jsonify({"error" : "undetermined"}),500
     
-@api_user.route("/api/users", methods = ["POST", "GET"])
+@api_user.route("/", methods = ["POST", "GET"])
 def call_api_users():
     try:
         user = get_user_from_token()
@@ -80,7 +80,7 @@ def call_api_users():
         print(err)
         return jsonify({"error": "undetermined"}), 500
 
-@api_user.route("/api/logout", methods = ["POST"])
+@api_user.route("/logout", methods = ["POST"])
 def logout_with_token():
     try:
         user = get_user_from_token()
@@ -94,7 +94,7 @@ def logout_with_token():
         print(err)
         return jsonify({"error": "undetermined"}),500
     
-@api_user.route('/api/hello', methods=["GET"])
+@api_user.route('/hello', methods=["GET"])
 def hello_api():
     try:
         return jsonify({"message": "Hello from API"}), 200
@@ -157,7 +157,7 @@ def delete_user(id):
         print(err)
         return jsonify({"error": "undetermined"}),500
 
-@api_user.route("/api/users/<int:id>", methods = ["PUT","GET","DELETE"])
+@api_user.route("/<int:id>", methods = ["PUT","GET","DELETE"])
 def call_api_users_with_id(id):
     try:
         user = get_user_from_token()
@@ -175,7 +175,7 @@ def call_api_users_with_id(id):
         print(err)
         return jsonify({"error": "undetermined"}),500
 
-@api_user.route("/api/users/search")
+@api_user.route("/search")
 def found_user():
     try:
         found_email_in_url = request.args.get("email")
@@ -193,7 +193,7 @@ def found_user():
         print(err)
         return jsonify({"error" : "undetermined"}),500
     
-@api_user.route("/api/login", methods = ["POST"])
+@api_user.route("/login", methods = ["POST"])
 def create_token():
     try:
         data = request.get_json()
@@ -222,7 +222,7 @@ def create_token():
         print(err)
         return jsonify({"error" : "undetermined"}),500
 
-@api_user.route("/api/me")
+@api_user.route("/me")
 def token_to_user():
     try:
         user = get_user_from_token()
@@ -236,3 +236,4 @@ def token_to_user():
     except Exception as err:
         print(err)
         return jsonify({"error" : "undetermined"}),500
+    

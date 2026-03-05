@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv()
 from flask import request, jsonify, Blueprint
-from blueprints.model import db, Movies, User
+from blueprints.model import db, Movies, User, Showtime
+from datetime import datetime
 
 api_movie = Blueprint("api_movie", __name__)
 
@@ -65,7 +66,7 @@ def list_movies():
         print(err)
         return jsonify({"error" : "undetermined"}),500
 
-@api_movie.route("/api/movies", methods = ["GET", "POST"])
+@api_movie.route("/", methods = ["GET", "POST"])
 def call_api_movies():
     try:
         user = get_user_from_token()
@@ -137,7 +138,7 @@ def delete_movie(id):
         print(err)
         return jsonify({"error" : "undetermined"}),500
     
-@api_movie.route("/api/movies/<int:id>", methods = ["GET","PUT","DELETE"])
+@api_movie.route("/<int:id>", methods = ["GET","PUT","DELETE"])
 def call_api_movie_with_id(id):
     try:
         user = get_user_from_token()
@@ -149,6 +150,164 @@ def call_api_movie_with_id(id):
             if request.method == "DELETE":
                 return delete_movie(id)
         return jsonify({"error": "Unauthorized"}), 401
+    except Exception as err:
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+def create_showtime_for_movie(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        found_movie_with_id = db.session.get(Movies, id)
+        if found_movie_with_id is None:
+            return jsonify({"error": "Movie not found"}), 404
+        data = request.get_json()
+        if data is None:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        input_start_time = data.get("input_start_time")
+        room = data.get("room")
+
+        if input_start_time is None:
+            return jsonify({"error" : "start_time is not Null"}), 400
+        try:
+            start_time = datetime.fromisoformat(input_start_time)
+        except ValueError:
+            return jsonify({"error" : "format of start time is ''YYYY-MM-DDTHH:MM:SS'' "}), 400
+        new_showtime = Showtime(id, start_time, room)
+        db.session.add(new_showtime)
+        db.session.commit()
+        return jsonify({
+            "start_time" : new_showtime.start_time.isoformat(),
+            "room" : new_showtime.room
+        }), 201
+    except Exception as err:
+        db.session.rollback()
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+def showtime_of_movie(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        found_movie_with_id = db.session.get(Movies, id)
+        if not found_movie_with_id:
+            return jsonify({"error": "Movie not found"}), 404
+        list_showtime = []
+        all_showtime = Showtime.query.filter(Showtime.movie_id == id).order_by(Showtime.start_time).all()
+        for showtime in all_showtime:
+            list_showtime.append({
+                "id" : showtime.id,
+                "movie_id" : showtime.movie_id,
+                "start_time" : showtime.start_time.isoformat(),
+                "room" : showtime.room
+            })
+        return jsonify(list_showtime), 200
+    except Exception as err:
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+@api_movie.route("/<int:id>/showtime", methods = ["POST","GET"])
+def call_showtime_with_id(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        if request.method == "POST":
+            return create_showtime_for_movie(id)
+        if request.method == "GET":
+            return showtime_of_movie(id)
+    except Exception as err:
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+def update_showtime_with_id(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        found_showtime_with_id = db.session.get(Showtime, id)
+        if found_showtime_with_id is None:
+            return jsonify({"error": "Movie not found"}), 404
+        data = request.get_json()
+        if data is None:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        input_start_time = data.get("input_start_time", found_showtime_with_id.start_time.isoformat())
+        room = data.get("room", found_showtime_with_id.room)
+        movie_id = data.get("movie_id", found_showtime_with_id.movie_id)
+
+        if input_start_time is None:
+            return jsonify({"error" : "start_time is not Null"}), 400
+        try:
+            start_time = datetime.fromisoformat(input_start_time)
+        except ValueError:
+            return jsonify({"error" : "format of start time is ''YYYY-MM-DDTHH:MM:SS'' "}), 400
+        found_movie_with_id = db.session.get(Movies, movie_id)
+        if found_movie_with_id is None:
+            return jsonify({"error" : "id in 'movie_id' is not existed"}), 404
+        found_showtime_with_id.start_time = start_time
+        found_showtime_with_id.room = room
+        found_showtime_with_id.movie_id = movie_id
+        db.session.commit()
+        return jsonify({
+            "start_time" : found_showtime_with_id.start_time.isoformat(),
+            "room" : found_showtime_with_id.room,
+            "movie_id" : found_showtime_with_id.movie_id
+        }), 200
+    except Exception as err:
+        db.session.rollback()
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+def showtime_with_id(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        found_id_in_Showtime = db.session.get(Showtime, id)
+        if found_id_in_Showtime is None:
+            return jsonify({"error": "Showtime not found"}), 404
+        return jsonify({
+            "id" : found_id_in_Showtime.id,
+            "movie_id" : found_id_in_Showtime.movie_id,
+            "start_time" : found_id_in_Showtime.start_time.isoformat(),
+            "room" : found_id_in_Showtime.room
+        }), 200
+    except Exception as err:
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+    
+def delete_showtime_with_id(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        found_id_in_Showtime = db.session.get(Showtime, id)
+        if found_id_in_Showtime is None:
+            return jsonify({"error": "Showtime not found"}), 404
+        db.session.delete(found_id_in_Showtime)
+        db.session.commit()
+        return jsonify({"message": "Showtime deleted"}), 200
+    except Exception as err:
+        db.session.rollback()
+        print(err)
+        return jsonify({"error" : "undetermined"}),500
+
+@api_movie.route("/api/showtime/<int:id>", methods = ["PUT", "GET", "DELETE"])
+def call_api_showtime_with_id(id):
+    try:
+        user = get_user_from_token()
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        if request.method == "GET":
+            return showtime_with_id(id)
+        if request.method == "PUT":
+            return update_showtime_with_id(id)
+        if request.method == "DELETE":
+            return delete_showtime_with_id(id)
     except Exception as err:
         print(err)
         return jsonify({"error" : "undetermined"}),500

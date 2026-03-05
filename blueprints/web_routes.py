@@ -6,7 +6,7 @@ from blueprints.model import db, User
 
 web_route = Blueprint("web_route",__name__)
 
-@web_route.route("/")
+@web_route.route("/", methods = ["POST","GET"])
 @web_route.route("/signup", methods = ["POST","GET"])
 def sign_up():
     if request.method == "POST":
@@ -19,11 +19,17 @@ def sign_up():
         found_user_with_name = User.query.filter(User.name == name).first()
         if found_user_with_email:
             flash ("email existed!", "error")
-        if input_password != check_password:
-            flash('password input different check password')
+            return redirect(url_for("web_route.sign_up"))
         if found_user_with_name:
             flash ("user name existed!")
-        
+            return redirect(url_for("web_route.sign_up"))
+        if len(input_password) < 8:
+            flash ("password length must longer 8 character")
+            return redirect(url_for("web_route.sign_up"))
+        if input_password != check_password:
+            flash('password input different check password')
+            return redirect(url_for("web_route.sign_up"))
+       
         session["email"] = email
         password = generate_password_hash(input_password)
         new_user = User(email, name, password)
@@ -35,9 +41,7 @@ def sign_up():
         session.pop("email",None)
         flash("You are logout")
     return render_template("signup.jinja")
-    
-    
-            
+      
 @web_route.route("/login", methods = ["POST","GET"])
 def login():
     if request.method == "POST":
